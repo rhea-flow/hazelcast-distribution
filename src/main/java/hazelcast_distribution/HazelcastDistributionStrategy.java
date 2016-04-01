@@ -1,8 +1,11 @@
 package hazelcast_distribution;
 
 import com.hazelcast.core.*;
+import org.javatuples.Pair;
 import org.jgrapht.traverse.BreadthFirstIterator;
 import org.rhea_core.Stream;
+import org.rhea_core.annotations.PlacementConstraint;
+import org.rhea_core.annotations.StrategyInfo;
 import org.rhea_core.distribution.DistributionStrategy;
 import org.rhea_core.distribution.graph.DistributedGraph;
 import org.rhea_core.distribution.graph.TopicEdge;
@@ -20,6 +23,7 @@ import org.rhea_core.network.Machine;
 import org.rhea_core.util.functions.Func0;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -28,8 +32,6 @@ public class HazelcastDistributionStrategy implements DistributionStrategy {
     HazelcastInstance hazelcast;
     List<Func0<EvaluationStrategy>> strategies;
     int desiredGranularity;
-
-    Func0<EvaluationStrategy> strategy;
 
     // for testing purposes
     public HazelcastDistributionStrategy(List<Func0<EvaluationStrategy>> strategies) {
@@ -58,7 +60,7 @@ public class HazelcastDistributionStrategy implements DistributionStrategy {
 
         // Run output node first
         HazelcastTopic result = newTopic();
-        tasks.add(new HazelcastTask(strategy, Stream.from(result), output));
+        tasks.add(createTask(Stream.from(result), output));
 
         // Then run each graph vertex as an individual node (reverse BFS)
         Set<Transformer> checked = new HashSet<>();
@@ -79,7 +81,7 @@ public class HazelcastDistributionStrategy implements DistributionStrategy {
             } else if (toExecute instanceof SingleInputExpr) {
                 assert inputs.size() == 1;
                 // 1 input
-                HazelcastTopic input = inputs.iterator().next().getTopic();
+                HazelcastTopic input = (HazelcastTopic) inputs.iterator().next().getTopic();
                 Transformer toAdd = new FromSource(input.clone());
                 innerGraph.addConnectVertex(toAdd);
                 innerGraph.attach(toExecute);
@@ -87,7 +89,7 @@ public class HazelcastDistributionStrategy implements DistributionStrategy {
                 assert inputs.size() > 1;
                 // N inputs
                 innerGraph.setConnectNodes(inputs.stream()
-                        .map(edge -> new FromSource(edge.getTopic().clone()))
+                        .map(edge -> new FromSource(edge.getTopic()/*.clone()*/))
                         .collect(Collectors.toList()));
                 innerGraph.attachMulti(toExecute);
             }
@@ -99,12 +101,13 @@ public class HazelcastDistributionStrategy implements DistributionStrategy {
                 list.add(new SinkOutput(result.clone()));
             list.addAll(outputs.stream()
                     .map(TopicEdge::getTopic)
+                    .map(t -> (HazelcastTopic) t)
                     .map((Function<HazelcastTopic, SinkOutput<Object>>) sink -> new SinkOutput(sink))
                     .collect(Collectors.toList()));
             Output outputToExecute = (list.size() == 1) ? list.get(0) : new MultipleOutput(list);
 
             // Schedule for execution
-            tasks.add(new HazelcastTask(strategy, new Stream(innerGraph), outputToExecute));
+            tasks.add(createTask(new Stream(innerGraph), outputToExecute));
 
             checked.add(toExecute);
         }
@@ -123,9 +126,11 @@ public class HazelcastDistributionStrategy implements DistributionStrategy {
 
     private void execute(HazelcastTask task, IExecutorService executorService) {
         executorService.execute(task, member -> {
-            for (String skill : task.getRequiredSkills())
+            for (String skill : task.getRequiredSkills()) {
+                System.out.println("Skill: " + skill);
                 if (!member.getAttributes().containsKey(skill))
                     return false;
+            }
             return true;
         });
     }
@@ -149,6 +154,38 @@ public class HazelcastDistributionStrategy implements DistributionStrategy {
         HazelcastTask task;
         while ((task = tasks.poll()) != null)
             execute(task, executorService);
+    }
+
+    private HazelcastTask createTask(Stream stream, Output output) {
+        Set<String> constraints = new HashSet<>();
+        for (Transformer node : stream.getGraph().vertices()) {
+            Class<?> clazz = node.getClass();
+            if (clazz.isAnnotationPresent(PlacementConstraint.class)) {
+                PlacementConstraint annotation = clazz.getAnnotation(PlacementConstraint.class);
+                constraints.add(annotation.constraint());
+            }
+        }
+
+        // TODO Subdivide different strategies
+        String constaint = null;
+        if (constraints.size() > 1) {
+            constaint = constraints.iterator().next();
+        }
+
+        SortedSet<Pair<StrategyInfo, Func0<EvaluationStrategy>>> strategiesImpl = new ConcurrentSkipListSet<>((e1, e2) -> {
+            int p1 = e1.getValue0().priority();
+            int p2 = e2.getValue0().priority();
+            return (p1 == p2) ? 0 : ((p1 > p2) ? -1 : 1);
+        });
+
+        for (Func0<EvaluationStrategy> s : strategies) {
+            StrategyInfo info = s.call().getClass().getAnnotation(StrategyInfo.class);
+            String name = info.name();
+            if (constaint == null | name.equals(constaint))
+                strategiesImpl.add(new Pair<>(info, s));
+        }
+
+        return new HazelcastTask(strategiesImpl.first().getValue1(), stream, output);
     }
 
     /**

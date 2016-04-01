@@ -7,8 +7,8 @@ import com.hazelcast.topic.ReliableMessageListener;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.rhea_core.Stream;
+import org.rhea_core.internal.Notification;
 import org.rhea_core.serialization.DefaultSerializer;
-import org.rhea_core.internal.notifications.Notification;
 import org.rhea_core.internal.output.Output;
 import org.rhea_core.io.AbstractTopic;
 

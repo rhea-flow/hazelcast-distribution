@@ -3,14 +3,14 @@ package hazelcast_distribution;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.HazelcastInstanceAware;
 import org.rhea_core.Stream;
-import org.rhea_core.distribution.annotations.RequiredSkills;
+import org.rhea_core.annotations.RequiredSkills;
+import org.rhea_core.annotations.StrategyInfo;
 import org.rhea_core.evaluation.EvaluationStrategy;
 import org.rhea_core.internal.expressions.Transformer;
 import org.rhea_core.internal.output.Output;
 import org.rhea_core.util.functions.Func0;
 
 import java.io.Serializable;
-import java.lang.annotation.Annotation;
 import java.util.*;
 
 public class HazelcastTask implements Runnable, Serializable, HazelcastInstanceAware {
@@ -20,7 +20,6 @@ public class HazelcastTask implements Runnable, Serializable, HazelcastInstanceA
     protected Func0<EvaluationStrategy> strategyGenerator;
     protected Stream stream;
     protected Output output;
-    private Set<String> requiredSkills;
 
     public HazelcastTask(Func0<EvaluationStrategy> strategyGenerator, Stream stream, Output output) {
         this.strategyGenerator = strategyGenerator;
@@ -30,15 +29,9 @@ public class HazelcastTask implements Runnable, Serializable, HazelcastInstanceA
 
     public Set<String> getRequiredSkills() {
         Set<String> skills = new HashSet<>();
-
-        for (Transformer node : stream.getGraph().vertices()) {
-            Class clazz = node.getClass();
-            if (clazz.isAnnotationPresent(RequiredSkills.class)) {
-                RequiredSkills annotation = (RequiredSkills) clazz.getAnnotation(RequiredSkills.class);
-                Collections.addAll(skills, annotation.requiredSkills());
-            }
-        }
-
+        EvaluationStrategy strategy = strategyGenerator.call();
+        StrategyInfo strategyInfo = strategy.getClass().getAnnotation(StrategyInfo.class);
+        Collections.addAll(skills, strategyInfo.requiredSkills());
         return skills;
     }
 
