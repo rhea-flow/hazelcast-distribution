@@ -1,0 +1,70 @@
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'idea'
+
+repositories {		
+	mavenCentral()
+	maven {
+        url "https://repo.eclipse.org/content/repositories/paho-releases/"
+    }
+    maven { url "https://jitpack.io" }
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+group = "com.github.rhea-flow"
+version = 1.0
+
+configurations.all {
+    // check for updates every build
+    resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
+}
+dependencies {	
+	// rhea-flow
+	compile 'com.github.rhea-flow:rhea-core:-SNAPSHOT'
+
+    // hazelcast
+    compile 'com.hazelcast:hazelcast:3.6'
+	
+	// Testing
+	testCompile 'junit:junit:4.11'
+    testCompile 'com.github.rhea-flow:rx-eval:-SNAPSHOT'
+    testCompile 'com.github.rhea-flow:test-data:-SNAPSHOT'
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
+test {
+	testLogging {
+		displayGranularity 3
+		//events 'passed', 'failed', 'standard_out'
+		//events 'passed', 'failed', 'standard_error'
+		events 'passed', 'failed', 'standard_out', 'standard_error'
+	}
+}
+
+if (JavaVersion.current().isJava8Compatible()) {
+    allprojects {
+      tasks.withType(Javadoc) {
+        options.addStringOption('Xdoclint:none', '-quiet')
+      }
+    }
+  }
+
+task wrapper(type: Wrapper) {
+	gradleVersion = '2.3'
+}
