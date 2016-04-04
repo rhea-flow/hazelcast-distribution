@@ -16,7 +16,7 @@ public class Adhoc {
 
         Stream.configure(new HazelcastDistributionStrategy(Collections.singletonList(RxjavaEvaluationStrategy::new)));
 
-        Stream.just(0).print();
+        Stream.nat().print();
 
         Threads.sleep();
     }
