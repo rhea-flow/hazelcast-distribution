@@ -3,10 +3,8 @@ package hazelcast_distribution;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.HazelcastInstanceAware;
 import org.rhea_core.Stream;
-import org.rhea_core.annotations.RequiredSkills;
 import org.rhea_core.annotations.StrategyInfo;
 import org.rhea_core.evaluation.EvaluationStrategy;
-import org.rhea_core.internal.expressions.Transformer;
 import org.rhea_core.internal.output.Output;
 import org.rhea_core.util.functions.Func0;
 
