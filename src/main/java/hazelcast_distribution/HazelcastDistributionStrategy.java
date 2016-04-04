@@ -167,7 +167,7 @@ public class HazelcastDistributionStrategy implements DistributionStrategy {
         }
 
         assert constraints.size() <= 1;
-        String constaint = constraints.iterator().next();
+        String constaint = (constraints.isEmpty()) ? null : constraints.iterator().next();
 
         SortedSet<Pair<StrategyInfo, Func0<EvaluationStrategy>>> strategiesImpl = new ConcurrentSkipListSet<>((e1, e2) -> {
             int p1 = e1.getValue0().priority();
