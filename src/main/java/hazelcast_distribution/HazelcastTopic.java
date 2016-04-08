@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 /**
  * @author Orestis Melkonian
  */
-public class HazelcastTopic<T> extends InternalTopic<T, byte[], HazelcastInstance> {
+public class HazelcastTopic<T> extends InternalTopic<T, HazelcastInstance> {
 
     private ITopic<byte[]> topic;
 
