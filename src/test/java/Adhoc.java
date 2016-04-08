@@ -13,8 +13,7 @@ public class Adhoc {
 
     @Test
     public void adhoc() {
-
-        Stream.configure(new HazelcastDistributionStrategy(Collections.singletonList(RxjavaEvaluationStrategy::new)));
+        Stream.distributionStrategy = new HazelcastDistributionStrategy(Collections.singletonList(RxjavaEvaluationStrategy::new));
 
         Stream.nat().print();
 

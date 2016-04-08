@@ -8,9 +8,9 @@ import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.rhea_core.Stream;
 import org.rhea_core.internal.Notification;
-import org.rhea_core.serialization.DefaultSerializer;
+import org.rhea_core.io.InternalTopic;
+import org.rhea_core.serialization.DefaultSerializationStrategy;
 import org.rhea_core.internal.output.Output;
-import org.rhea_core.io.AbstractTopic;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -18,12 +18,12 @@ import java.util.stream.Collectors;
 /**
  * @author Orestis Melkonian
  */
-public class HazelcastTopic<T> extends AbstractTopic<T, byte[], HazelcastInstance> {
+public class HazelcastTopic<T> extends InternalTopic<T, byte[], HazelcastInstance> {
 
     private ITopic<byte[]> topic;
 
     public HazelcastTopic(String name) {
-        super(name, new DefaultSerializer());
+        super(name, Stream.serializationStrategy);
     }
 
     @Override
@@ -60,7 +60,7 @@ public class HazelcastTopic<T> extends AbstractTopic<T, byte[], HazelcastInstanc
             @Override
             public void onMessage(Message<byte[]> message) {
                 byte[] msg = message.getMessageObject();
-                Notification<T> notification = serializer.deserialize(msg);
+                Notification<T> notification = serializationStrategy.deserialize(msg);
                 switch (notification.getKind()) {
                     case OnNext:
                         if (Stream.DEBUG)
@@ -104,7 +104,7 @@ public class HazelcastTopic<T> extends AbstractTopic<T, byte[], HazelcastInstanc
     }
 
     private void publish(Notification notification) {
-        topic.publish(serializer.serialize(notification));
+        topic.publish(serializationStrategy.serialize(notification));
     }
 
     @Override
@@ -113,7 +113,7 @@ public class HazelcastTopic<T> extends AbstractTopic<T, byte[], HazelcastInstanc
     }
 
     public static List<HazelcastTopic> extract(Stream stream, Output output) {
-        return AbstractTopic.extractAll(stream, output)
+        return InternalTopic.extractAll(stream, output)
                 .stream()
                 .filter(topic -> topic instanceof HazelcastTopic)
                 .map(topic -> ((HazelcastTopic) topic))
