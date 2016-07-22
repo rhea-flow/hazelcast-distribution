@@ -4,13 +4,13 @@ import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.ITopic;
 import com.hazelcast.core.Message;
 import com.hazelcast.topic.ReliableMessageListener;
+
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 import org.rhea_core.Stream;
 import org.rhea_core.internal.Notification;
-import org.rhea_core.io.InternalTopic;
-import org.rhea_core.serialization.DefaultSerializationStrategy;
 import org.rhea_core.internal.output.Output;
+import org.rhea_core.io.InternalTopic;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -18,11 +18,11 @@ import java.util.stream.Collectors;
 /**
  * @author Orestis Melkonian
  */
-public class HazelcastTopic<T> extends InternalTopic<T, HazelcastInstance> {
+class HazelcastTopic<T> extends InternalTopic<T, HazelcastInstance> {
 
     private ITopic<byte[]> topic;
 
-    public HazelcastTopic(String name) {
+    HazelcastTopic(String name) {
         super(name, Stream.serializationStrategy);
     }
 
@@ -39,7 +39,7 @@ public class HazelcastTopic<T> extends InternalTopic<T, HazelcastInstance> {
 
             @Override
             public long retrieveInitialSequence() {
-                return (sequence == 0) ? 0 : sequence + 1;
+                return (sequence == 0) ? 0 : (sequence + 1);
             }
 
             @Override
@@ -112,7 +112,7 @@ public class HazelcastTopic<T> extends InternalTopic<T, HazelcastInstance> {
         return new HazelcastTopic<>(name);
     }
 
-    public static List<HazelcastTopic> extract(Stream stream, Output output) {
+    static List<HazelcastTopic> extract(Stream stream, Output output) {
         return InternalTopic.extractAll(stream, output)
                 .stream()
                 .filter(topic -> topic instanceof HazelcastTopic)

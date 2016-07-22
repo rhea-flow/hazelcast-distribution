@@ -29,13 +29,13 @@ import java.util.stream.Collectors;
 
 
 public class HazelcastDistributionStrategy implements DistributionStrategy {
-    HazelcastInstance hazelcast;
-    List<Func0<EvaluationStrategy>> strategies;
+    private final HazelcastInstance hazelcast;
+    private final List<Func0<EvaluationStrategy>> strategies;
 
     // for testing purposes
     public HazelcastDistributionStrategy(List<Func0<EvaluationStrategy>> strategies) {
         this.strategies = strategies;
-        this.hazelcast = Hazelcast.newHazelcastInstance();
+        hazelcast = Hazelcast.newHazelcastInstance();
     }
 
     public HazelcastDistributionStrategy(HazelcastInstance hazelcast, List<Machine> machines, List<Func0<EvaluationStrategy>> strategies) {
@@ -43,6 +43,7 @@ public class HazelcastDistributionStrategy implements DistributionStrategy {
         this.hazelcast = hazelcast;
     }
 
+    @Override
     public void distribute(Stream stream, Output output) {
 
         // TODO Task Fusion { iff (stream.getGraph().size() > desiredGranularity) }
@@ -68,7 +69,7 @@ public class HazelcastDistributionStrategy implements DistributionStrategy {
 
             FlowGraph innerGraph = new FlowGraph();
             if (toExecute instanceof NoInputExpr) {
-                assert inputs.size() == 0;
+                assert inputs.isEmpty();
                 // 0 input
                 innerGraph.addConnectVertex(toExecute);
             } else if (toExecute instanceof SingleInputExpr) {
@@ -160,7 +161,7 @@ public class HazelcastDistributionStrategy implements DistributionStrategy {
         }
 
         assert constraints.size() <= 1;
-        String constaint = (constraints.isEmpty()) ? null : constraints.iterator().next();
+        String constaint = constraints.isEmpty() ? null : constraints.iterator().next();
 
         SortedSet<Pair<StrategyInfo, Func0<EvaluationStrategy>>> strategiesImpl = new ConcurrentSkipListSet<>((e1, e2) -> {
             int p1 = e1.getValue0().priority();
@@ -171,7 +172,7 @@ public class HazelcastDistributionStrategy implements DistributionStrategy {
         for (Func0<EvaluationStrategy> s : strategies) {
             StrategyInfo info = s.call().getClass().getAnnotation(StrategyInfo.class);
             String name = info.name();
-            if (constaint == null | name.equals(constaint))
+            if ((constaint == null) | name.equals(constaint))
                 strategiesImpl.add(new Pair<>(info, s));
         }
 
@@ -181,9 +182,9 @@ public class HazelcastDistributionStrategy implements DistributionStrategy {
     /**
      * Generators
      */
-    String nodePrefix = "t";
-    int topicCounter = 0;
-    public HazelcastTopic newTopic() {
+    private String nodePrefix = "t";
+    private int topicCounter = 0;
+    private HazelcastTopic newTopic() {
         return new HazelcastTopic(nodePrefix + "/" + Integer.toString(topicCounter++));
     }
 }
