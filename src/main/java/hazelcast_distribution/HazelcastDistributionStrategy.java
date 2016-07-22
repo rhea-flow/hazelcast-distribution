@@ -31,23 +31,16 @@ import java.util.stream.Collectors;
 public class HazelcastDistributionStrategy implements DistributionStrategy {
     HazelcastInstance hazelcast;
     List<Func0<EvaluationStrategy>> strategies;
-    int desiredGranularity;
 
     // for testing purposes
     public HazelcastDistributionStrategy(List<Func0<EvaluationStrategy>> strategies) {
         this.strategies = strategies;
-        desiredGranularity = Runtime.getRuntime().availableProcessors();;
         this.hazelcast = Hazelcast.newHazelcastInstance();
     }
 
     public HazelcastDistributionStrategy(HazelcastInstance hazelcast, List<Machine> machines, List<Func0<EvaluationStrategy>> strategies) {
         this.strategies = strategies;
-        desiredGranularity = machines.stream().map(Machine::cores).reduce((i1, i2) -> i1 + i2).get();
         this.hazelcast = hazelcast;
-    }
-
-    public int getDesiredGranularity() {
-        return desiredGranularity;
     }
 
     public void distribute(Stream stream, Output output) {
